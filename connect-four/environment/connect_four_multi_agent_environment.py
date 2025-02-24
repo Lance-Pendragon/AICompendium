@@ -3,10 +3,10 @@ from gym import spaces
 import numpy as np
 from ray.rllib.env.multi_agent_env import MultiAgentEnv
 
+NUM_ROWS = 6
+NUM_COLUMNS = 7
 
 class ConnectFourMultiAgentEnvironment(MultiAgentEnv):
-    NUM_ROWS = 6
-    NUM_COLUMNS = 7
 
     def __init__(self, config=None):
         super().__init__()
@@ -27,7 +27,7 @@ class ConnectFourMultiAgentEnvironment(MultiAgentEnv):
     def reset(self):
         return None
 
-    def step(self):
+    def step(self, action):
         return None
 
     def render(self):
@@ -36,7 +36,7 @@ class ConnectFourMultiAgentEnvironment(MultiAgentEnv):
     def get_observation_space(self):
         return spaces.Dict(
             {
-                "board": spaces.Box(low=0, high=2, shape=(6, 7)),
+                "board": spaces.Box(low=0, high=2, shape=(NUM_ROWS, NUM_COLUMNS)),
                 "action_mask": self.get_action_mask(),
             }
         )
