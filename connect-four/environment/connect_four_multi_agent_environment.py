@@ -13,7 +13,7 @@ class ConnectFourMultiAgentEnv(MultiAgentEnv):
         super().__init__()
 
         # -1 = empty, 0 = player 1, 1 = player 2
-        self.board = np.empty(shape=(NUM_ROWS, NUM_COLUMNS), dtype=np.int8).fill(-1)
+        self.board = np.full((NUM_ROWS, NUM_COLUMNS), -1, dtype=np.int8)
 
         self.players = ["player_1", "player_2"]
         self.currentPlayerIndex = 0
@@ -40,7 +40,7 @@ class ConnectFourMultiAgentEnv(MultiAgentEnv):
             done = True
             return self.get_observation_space(), reward, done, {}
 
-        row, colunm = self.applyMove(action)
+        row, column = self.applyMove(action)
 
         if self.is_victory(row, column):
             reward = 100
@@ -52,25 +52,25 @@ class ConnectFourMultiAgentEnv(MultiAgentEnv):
             reward = 0.1
             done = False
 
+        self.currentPlayerIndex = 1 - self.currentPlayerIndex
+
         return self.get_observation_space(), reward, done, {}
 
     def render(self):
         return None
 
     def get_observation_space(self):
-        return spaces.Dict(
-            {
-                "board": np.array(self.board, dtype=np.int8),
-                "action_mask": self.get_action_mask(),
-            }
-        )
+        return {
+            "board": np.array(self.board, dtype=np.int8),
+            "action_mask": self.get_action_mask(),
+        }
 
     def get_action_mask(self):
         return [int(not self.board[0][column] != -1) for column in range(NUM_COLUMNS)]
 
     def is_valid_move(self, column):
         # only need to check if top is filled
-        return self.board[NUM_ROWS - 1][column] != -1
+        return self.board[0][column] != -1
 
     def is_victory(self, row, column):
         directions = [
@@ -114,7 +114,7 @@ class ConnectFourMultiAgentEnv(MultiAgentEnv):
         return np.all(self.board != -1)
 
     def applyMove(self, column):
-        for row in range(NUM_ROWS):
+        for row in reversed(range(NUM_ROWS)):
             isCellEmpty = self.board[row][column] == -1
             if isCellEmpty:
                 self.board[row][column] = self.currentPlayerIndex
