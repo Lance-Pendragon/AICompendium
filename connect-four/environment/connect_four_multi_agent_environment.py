@@ -6,7 +6,7 @@ from ray.rllib.env.multi_agent_env import MultiAgentEnv
 NUM_ROWS = 6
 NUM_COLUMNS = 7
 
-class ConnectFourMultiAgentEnvironment(MultiAgentEnv):
+class ConnectFourMultiAgentEnv(MultiAgentEnv):
 
     def __init__(self, config=None):
         super().__init__()
@@ -24,18 +24,11 @@ class ConnectFourMultiAgentEnvironment(MultiAgentEnv):
             }
         )
 
+
     def reset(self):        
         # 0 = empty, 1 = player 1, 2 = player 2
         self.board = np.zeros((NUM_ROWS, NUM_COLUMNS), dtype=np.int8)
-        self.observation_space = spaces.Dict(
-            {
-                "board": spaces.Box(
-                    low=0, high=2, shape=(NUM_ROWS, NUM_COLUMNS)
-                ),  # connect4 has 6 rows, 7 columns
-                "action_mask": spaces.MultiBinary(NUM_COLUMNS),
-            }
-        )
-        return None
+        return self.get_observation_space()
 
     def step(self, action):
         # action should be an integer corresponding with a column
@@ -52,7 +45,7 @@ class ConnectFourMultiAgentEnvironment(MultiAgentEnv):
             reward = -.1
             done = False
 
-        return self.get_observation_space, reward, done, {}
+        return self.get_observation_space(), reward, done, {}
 
     def render(self):
         return None
@@ -70,4 +63,12 @@ class ConnectFourMultiAgentEnvironment(MultiAgentEnv):
 
 
     def is_valid_move(self, action):
-        return self.board[action] == '0'
+        # need to check column here
+        return self.board[action] == 0
+
+    def is_victory(self):
+        # check if placement location has a winning connection in 7 radial directions (everydirection but up)
+        return False
+
+    def is_draw(self):
+        return np.all(self.board != 0)
