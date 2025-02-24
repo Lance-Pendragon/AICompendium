@@ -18,7 +18,7 @@ class ConnectFourMultiAgentEnv(MultiAgentEnv):
         self.players = ["player_1", "player_2"]
         self.currentPlayerIndex = 0
 
-        self.action_space = spaces.Discrete(7)  # 7 columns to pick from
+        self.action_space = spaces.Discrete(NUM_COLUMNS)
         self.observation_space = spaces.Dict(
             {
                 "board": spaces.Box(
