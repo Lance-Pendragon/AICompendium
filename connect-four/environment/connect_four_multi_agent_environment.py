@@ -1,6 +1,7 @@
 import gym
 from gym import spaces
 import numpy as np
+from random import randint
 from ray.rllib.env.multi_agent_env import MultiAgentEnv
 
 NUM_ROWS = 6
@@ -31,7 +32,7 @@ class ConnectFourMultiAgentEnv(MultiAgentEnv):
     def reset(self):
         # 0 = empty, 1 = player 1, 2 = player 2
         self.board = np.full((NUM_ROWS, NUM_COLUMNS), -1, dtype=np.int8)
-        self.currentAgentIndex = 0
+        self.currentAgentIndex = randint(0, 1)
         return self.get_observation_space()
 
     def step(self, action_dict):
