@@ -15,7 +15,7 @@ class ConnectFourMultiAgentEnv(MultiAgentEnv):
         # 0 = empty, 1 = player 1, 2 = player 2
         self.board = np.zeros((NUM_ROWS, NUM_COLUMNS), dtype=np.int8)
 
-        self.players = ['player_1', 'player_2']
+        self.players = ["player_1", "player_2"]
         self.currentPlayerIndex = 0
 
         self.action_space = spaces.Discrete(7)  # 7 columns to pick from
@@ -39,17 +39,17 @@ class ConnectFourMultiAgentEnv(MultiAgentEnv):
             reward = -10
             done = True
             return self.get_observation_space(), reward, done, {}
-        
-        self.applyMove(action)
 
-        if self.is_victory():
+        row, colunm = self.applyMove(action)
+
+        if self.is_victory(row, column):
             reward = 100
             done = True
         elif self.is_draw():
             reward = 0
             done = True
         else:
-            reward = .1
+            reward = 0.1
             done = False
 
         return self.get_observation_space(), reward, done, {}
@@ -72,8 +72,42 @@ class ConnectFourMultiAgentEnv(MultiAgentEnv):
         # only need to check if top is filled
         return self.board[NUM_ROWS - 1][column] != 0
 
-    def is_victory(self):
-        # check if placement location has a winning connection in 7 radial directions (everydirection but up)
+    def is_victory(self, row, column):
+        directions = [
+            (0, 1),  # Horizontal to the right
+            (1, 0),  # Vertical upwards
+            (1, 1),  # Diagonal, down + right
+            (1, -1),  # Diagonal, down + left
+        ]
+
+        currentPlayerPiece = self.board[row][column]
+
+        for horizontalDirection, verticalDirection in directions:
+            count = 1
+            currentRow = row + horizontalDirection
+            currentColumn = column + verticalDirection
+            while (
+                0 <= currentRow < NUM_ROWS
+                and 0 <= currentColumn < NUM_COLUMNS
+                and self.board[currentRow][currentColumn] == currentPlayerPiece
+            ):
+                count += 1
+                currentRow += horizontalDirection
+                currentColumn += verticalDirection
+
+            currentRow = row - horizontalDirection
+            currentColumn = column - verticalDirection
+            while (
+                0 <= currentRow < NUM_ROWS
+                and 0 <= currentColumn < NUM_COLUMNS
+                and self.board[currentRow][currentColumn] == currentPlayerPiece
+            ):
+                count += 1
+                currentRow -= horizontalDirection
+                currentColumn -= verticalDirection
+
+            if count >= 4:
+                return True
         return False
 
     def is_draw(self):
@@ -84,4 +118,4 @@ class ConnectFourMultiAgentEnv(MultiAgentEnv):
             isCellEmpty = self.board[row][column] == 0
             if isCellEmpty:
                 self.board[row][column] = self.currentPlayerIndex + 1
-                return None
+                return row, column
