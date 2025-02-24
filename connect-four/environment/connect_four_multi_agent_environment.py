@@ -1,7 +1,7 @@
 import gym
 from gym import spaces
 import numpy as np
-from random import randint
+from random import randint, choice
 from ray.rllib.env.multi_agent_env import MultiAgentEnv
 
 NUM_ROWS = 6
@@ -13,63 +13,58 @@ class ConnectFourMultiAgentEnv(MultiAgentEnv):
     def __init__(self, config=None):
         super().__init__()
 
-        # -1 = empty, 0 = player 1, 1 = player 2
-        self.board = np.full((NUM_ROWS, NUM_COLUMNS), -1, dtype=np.int8)
-        self.agents = ["player_1", "player_2"]
-        self.current_agent_index = randint(0, 1)
-
-        # Shared action and observation spaces
-        self.action_space = spaces.Discrete(NUM_COLUMNS)
-        self.observation_space = spaces.Dict(
-            {
-                "board": spaces.Box(
-                    low=-1, high=1, shape=(NUM_ROWS, NUM_COLUMNS), dtype=np.int8
-                ),
-                "action_mask": spaces.MultiBinary(NUM_COLUMNS),
-            }
-        )
+        self.board = None
+        self.agents = self.possible_agents = ["player_1", "player_2"]
+        self.current_agent = None
+        
+        self.action_spaces = {
+            agent: spaces.Discrete(NUM_COLUMNS) for agents in self.agents
+        }
+        self.observation_spaces = {
+            agent: self.get_observation() for agents in self.agents
+        }
 
     def reset(self):
         self.board = np.full((NUM_ROWS, NUM_COLUMNS), -1, dtype=np.int8)
-        self.current_agent_index = randint(0, 1)
+        self.current_agent = random.choice(self.agents)
 
-        return {agent: self.get_observation() for agent in self.agents}
+        return {
+            self.current_agent: self.get_observation()
+        }
 
     def step(self, action_dict):
-        current_player = self.agents[self.current_agent_index]
-        opponent = self.agents[1 - self.current_agent_index]
-        column = action_dict[current_player]
+        column = self.current_agent
+        opponent = "player_1" if self.current_agent == "player_1" else "player_2"
 
-        rewards = {current_player: 0.0, opponent: 0.0}
-        terminateds = {current_player: False, opponent: False, "__all__": False}
+        column = action_dict[self.current_agent]
+
+        rewards = {self.current_agent: 0.0}
+        terminateds = {"__all__": False}
 
         if not self.is_valid_move(column):
-            rewards[current_player] = -10  # Penalty for invalid move
-            terminateds["__all__"] = True
-            return (
-                {agent: self.get_observation() for agent in self.agents},
-                rewards,
-                terminateds,
-                {},
-            )
+            rewards[current_player] -= 5
 
         row, column = self.applyMove(column)
 
         if self.is_victory(row, column):
-            rewards[current_player] = 10
+            rewards[self.current_agent] = 10
             rewards[opponent] = -10
             terminateds["__all__"] = True
         elif self.is_draw():
-            rewards[current_player] = -5
+            rewards[self.current_agent] = -5
             rewards[opponent] = -5
             terminateds["__all__"] = True
 
-        self.current_agent_index = 1 - self.current_agent_index
+        # todo - find a way to 'grade' non game ending moves
+        # promote connections?
+
+        self.current_agent = opponent
 
         return (
-            {agent: self.get_observation() for agent in self.agents},
+            {self.current_agent: self.get_observation},
             rewards,
             terminateds,
+            {},
             {},
         )
 
@@ -130,5 +125,4 @@ class ConnectFourMultiAgentEnv(MultiAgentEnv):
         return False
 
     def is_draw(self):
-        """Checks if the board is full (draw)."""
         return np.all(self.board != -1)
