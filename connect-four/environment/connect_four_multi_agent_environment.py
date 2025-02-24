@@ -15,6 +15,9 @@ class ConnectFourMultiAgentEnv(MultiAgentEnv):
         # 0 = empty, 1 = player 1, 2 = player 2
         self.board = np.zeros((NUM_ROWS, NUM_COLUMNS), dtype=np.int8)
 
+        self.players = ['player_1', 'player_2']
+        self.currentPlayerIndex = 0
+
         self.action_space = spaces.Discrete(7)  # 7 columns to pick from
         self.observation_space = spaces.Dict(
             {
@@ -32,12 +35,12 @@ class ConnectFourMultiAgentEnv(MultiAgentEnv):
 
     def step(self, action):
         # action should be an integer corresponding with a column
-        if not self.is_valid_move():
+        if not self.is_valid_move(column):
             reward = -10
             done = True
-        else:
-            reward = .1
-            done = False
+            return self.get_observation_space(), reward, done, {}
+        
+        self.applyMove(action)
 
         if self.is_victory():
             reward = 100
@@ -45,6 +48,9 @@ class ConnectFourMultiAgentEnv(MultiAgentEnv):
         elif self.is_draw():
             reward = 0
             done = True
+        else:
+            reward = .1
+            done = False
 
         return self.get_observation_space(), reward, done, {}
 
@@ -60,11 +66,11 @@ class ConnectFourMultiAgentEnv(MultiAgentEnv):
         )
 
     def get_action_mask(self):
-        return [int(not self.board[0][col] != 0) for col in range(NUM_COLUMNS)]
+        return [int(not self.board[0][column] != 0) for column in range(NUM_COLUMNS)]
 
-    def is_valid_move(self, action):
+    def is_valid_move(self, column):
         # only need to check if top is filled
-        return self.board[NUM_ROWS - 1][action] != 0
+        return self.board[NUM_ROWS - 1][column] != 0
 
     def is_victory(self):
         # check if placement location has a winning connection in 7 radial directions (everydirection but up)
@@ -72,3 +78,10 @@ class ConnectFourMultiAgentEnv(MultiAgentEnv):
 
     def is_draw(self):
         return np.all(self.board != 0)
+
+    def applyMove(self, column):
+        for row in range(NUM_ROWS):
+            isCellEmpty = self.board[row][column] == 0
+            if isCellEmpty:
+                self.board[row][column] = self.currentPlayerIndex + 1
+                return None
