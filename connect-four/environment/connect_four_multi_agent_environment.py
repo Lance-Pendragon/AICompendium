@@ -63,8 +63,8 @@ class ConnectFourMultiAgentEnv(MultiAgentEnv):
 
 
     def is_valid_move(self, action):
-        # need to check column here
-        return self.board[action] == 0
+        # only need to check if top is filled
+        return self.board[NUM_ROWS - 1][action] != 0
 
     def is_victory(self):
         # check if placement location has a winning connection in 7 radial directions (everydirection but up)
