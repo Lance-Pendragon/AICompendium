@@ -38,7 +38,21 @@ class ConnectFourMultiAgentEnvironment(MultiAgentEnv):
         return None
 
     def step(self, action):
-        return None
+        # action should be an integer corresponding with a column
+        if not self.is_valid_move():
+           reward = -10
+           done = True
+        elif self.is_victory():
+            reward = 100
+            done = True
+        elif self.is_draw():
+            reward = 0
+            done = True
+        else:
+            reward = -.1
+            done = False
+
+        return self.get_observation_space, reward, done, {}
 
     def render(self):
         return None
@@ -53,3 +67,7 @@ class ConnectFourMultiAgentEnvironment(MultiAgentEnv):
 
     def get_action_mask(self):
         return [int(not self.board[0][col] != 0) for col in range(NUM_COLUMNS)]
+
+
+    def is_valid_move(self, action):
+        return self.board[action] == '0'
