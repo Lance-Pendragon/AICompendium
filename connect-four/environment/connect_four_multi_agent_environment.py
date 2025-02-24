@@ -15,8 +15,8 @@ class ConnectFourMultiAgentEnv(MultiAgentEnv):
         # -1 = empty, 0 = player 1, 1 = player 2
         self.board = np.full((NUM_ROWS, NUM_COLUMNS), -1, dtype=np.int8)
 
-        self.players = ["player_1", "player_2"]
-        self.currentPlayerIndex = 0
+        self.agents = self.possible_agents = ["player_1", "player_2"]
+        self.currentAgentIndex = 0
 
         self.action_space = spaces.Discrete(NUM_COLUMNS)
         self.observation_space = spaces.Dict(
@@ -30,10 +30,18 @@ class ConnectFourMultiAgentEnv(MultiAgentEnv):
 
     def reset(self):
         # 0 = empty, 1 = player 1, 2 = player 2
-        self.board = np.zeros((NUM_ROWS, NUM_COLUMNS), dtype=np.int8).fill(-1)
+        self.board = np.full((NUM_ROWS, NUM_COLUMNS), -1, dtype=np.int8)
+        self.currentAgentIndex = 0
         return self.get_observation_space()
 
-    def step(self, action):
+    def step(self, action_dict):
+        current_player = self.agents[self.currentAgentIndex]
+        opponent = self.agents[1 - self.currentAgentIndex]
+        column = action_dict[current_player]
+        rewards = {current_player: 0.0}
+        terminateds = {"__all__": False}
+        
+
         # action should be an integer corresponding with a column
         if not self.is_valid_move(column):
             reward = -10
@@ -43,16 +51,18 @@ class ConnectFourMultiAgentEnv(MultiAgentEnv):
         row, column = self.applyMove(action)
 
         if self.is_victory(row, column):
-            reward = 100
-            done = True
+            rewards[current_player] += 10
+            rewards[opponent] -= 10
+            terminateds = {"__all__": True}
         elif self.is_draw():
-            reward = 0
-            done = True
+            rewards[current_player] -= 5
+            rewards[opponent] -= 5
+            terminateds = {"__all__": True}
         else:
             reward = 0.1
             done = False
 
-        self.currentPlayerIndex = 1 - self.currentPlayerIndex
+        self.currentAgentIndex = 1 - self.currentAgentIndex
 
         return self.get_observation_space(), reward, done, {}
 
@@ -117,5 +127,5 @@ class ConnectFourMultiAgentEnv(MultiAgentEnv):
         for row in reversed(range(NUM_ROWS)):
             isCellEmpty = self.board[row][column] == -1
             if isCellEmpty:
-                self.board[row][column] = self.currentPlayerIndex
+                self.board[row][column] = self.currentAgentIndex
                 return row, column
