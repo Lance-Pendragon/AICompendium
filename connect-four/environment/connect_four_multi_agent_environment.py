@@ -6,6 +6,7 @@ from ray.rllib.env.multi_agent_env import MultiAgentEnv
 NUM_ROWS = 6
 NUM_COLUMNS = 7
 
+
 class ConnectFourMultiAgentEnv(MultiAgentEnv):
 
     def __init__(self, config=None):
@@ -24,8 +25,7 @@ class ConnectFourMultiAgentEnv(MultiAgentEnv):
             }
         )
 
-
-    def reset(self):        
+    def reset(self):
         # 0 = empty, 1 = player 1, 2 = player 2
         self.board = np.zeros((NUM_ROWS, NUM_COLUMNS), dtype=np.int8)
         return self.get_observation_space()
@@ -33,17 +33,18 @@ class ConnectFourMultiAgentEnv(MultiAgentEnv):
     def step(self, action):
         # action should be an integer corresponding with a column
         if not self.is_valid_move():
-           reward = -10
-           done = True
-        elif self.is_victory():
+            reward = -10
+            done = True
+        else:
+            reward = .1
+            done = False
+
+        if self.is_victory():
             reward = 100
             done = True
         elif self.is_draw():
             reward = 0
             done = True
-        else:
-            reward = -.1
-            done = False
 
         return self.get_observation_space(), reward, done, {}
 
@@ -60,7 +61,6 @@ class ConnectFourMultiAgentEnv(MultiAgentEnv):
 
     def get_action_mask(self):
         return [int(not self.board[0][col] != 0) for col in range(NUM_COLUMNS)]
-
 
     def is_valid_move(self, action):
         # only need to check if top is filled
