@@ -49,7 +49,7 @@ class ConnectFourMultiAgentEnv(MultiAgentEnv):
             done = True
             return self.get_observation_space(), reward, done, {}
 
-        row, column = self.applyMove(action)
+        row, column = self.applyMove(column)
 
         if self.is_victory(row, column):
             rewards[current_player] += 10
