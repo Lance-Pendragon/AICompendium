@@ -1,9 +1,6 @@
 import functools
-
-import gymnasium
 import numpy as np
 from gymnasium.spaces import Discrete, Box
-
 from pettingzoo import AECEnv
 from pettingzoo.utils import agent_selector, wrappers
 
@@ -21,7 +18,7 @@ def env(render_mode=None):
         env = wrappers.CaptureStdoutWrapper(env)
     # this wrapper helps error handling for discrete action spaces
     env = wrappers.AssertOutOfBoundsWrapper(env)
-    # Provides a wide vareity of helpful user errors
+    # Provides a wide variety of helpful user errors
     # Strongly recommended
     env = wrappers.OrderEnforcingWrapper(env)
     return env
@@ -51,7 +48,7 @@ class raw_env(AECEnv):
         These attributes should not be changed after initialization.
         """
         self.agents = self.possible_agents = ["X", "O"]
-        self.grid = np.full((3,3), -1, np.int8)
+        self.grid = np.full((3, 3), -1, dtype=np.int8)  # -1: empty, 0: X, 1: O
 
         # optional: we can define the observation and action spaces here as attributes to be used in their corresponding methods
         self.render_mode = render_mode
@@ -59,17 +56,16 @@ class raw_env(AECEnv):
     # Observation space should be defined here.
     # lru_cache allows observation and action spaces to be memoized, reducing clock cycles required to get each agent's space.
     # If your spaces change over time, remove this line (disable caching).
-    # @functools.lru_cache(maxsize=None)
+    @functools.lru_cache(maxsize=None)
     def observation_space(self, agent):
         # gymnasium spaces are defined and documented here: https://gymnasium.farama.org/api/spaces/
-        # to-do : maybe add action masking
-        return Box(-1, 1, (3, 3), np.int8)
+        return Box(low=-1, high=1, shape=(3, 3), dtype=np.int8)
 
     # Action space should be defined here.
     # If your spaces change over time, remove this line (disable caching).
     @functools.lru_cache(maxsize=None)
     def action_space(self, agent):
-        return Discrete(9) # 9 spots in tic tac toe
+        return Discrete(9)  # 9 spots in tic tac toe
 
     def render(self):
         """
@@ -94,8 +90,7 @@ class raw_env(AECEnv):
         should return a sane observation (though not necessarily the most up to date possible)
         at any time after reset() is called.
         """
-        # observation of one agent is the previous state of the other
-        return np.array(self.grid)
+        return np.array(self.grid, dtype=np.int8)
 
     def close(self):
         """
@@ -117,21 +112,18 @@ class raw_env(AECEnv):
         - agent_selection
         And must set up the environment so that render(), step(), and observe()
         can be called without issues.
-        Here it sets up the state dictionary which is used by step() and the observations dictionary which is used by step() and observe()
         """
+        self.grid = np.full((3, 3), -1, dtype=np.int8)
         self.agents = self.possible_agents[:]
         self.rewards = {agent: 0 for agent in self.agents}
         self._cumulative_rewards = {agent: 0 for agent in self.agents}
         self.terminations = {agent: False for agent in self.agents}
         self.truncations = {agent: False for agent in self.agents}
         self.infos = {agent: {} for agent in self.agents}
-        self.state = {agent: NONE for agent in self.agents}
-        self.observations = {agent: NONE for agent in self.agents}
-        """
-        Our agent_selector utility allows easy cyclic stepping through the agents list.
-        """
         self._agent_selector = agent_selector(self.agents)
         self.agent_selection = self._agent_selector.reset()
+
+        return self.observe(self.agent_selection)
 
     def step(self, action):
         """
@@ -145,21 +137,65 @@ class raw_env(AECEnv):
         - agent_selection (to the next agent)
         And any internal state used by observe() or render()
         """
-
         agent = self.agent_selection
+        opponent = self._agent_selector.next()
 
-        # the agent which stepped last had its _cumulative_rewards accounted for
-        # (because it was returned by last()), so the _cumulative_rewards for this
-        # agent should start again at 0
-        self._cumulative_rewards[agent] = 0
+        # Check if the action is valid
+        row, col = divmod(action, 3)
+        if self.grid[row, col] != -1:
+            raise ValueError("This spot is already filled!")
 
-        # stores action of current agent
-        self.state[self.agent_selection] = action
+        # Update the grid
+        self.grid[row, col] = 0 if agent == "X" else 1
 
-        # selects the next agent.
-        self.agent_selection = self._agent_selector.next()
-        # Adds .rewards to ._cumulative_rewards
+        # Check for a win
+        if self._check_win(agent):
+            self.rewards[agent] = 1
+            self.rewards[opponent] = -1
+            self.terminations = {agent: True for agent in self.agents}
+        # Check for a draw
+        elif np.all(self.grid != -1):
+            self.rewards = {agent: 0 for agent in self.agents}
+            self.terminations = {agent: True for agent in self.agents}
+        else:
+            self.rewards = {agent: 0 for agent in self.agents}
+
+        # Switch to the next agent
+        self.agent_selection = opponent
+
+        # Accumulate rewards
         self._accumulate_rewards()
 
         if self.render_mode == "human":
             self.render()
+
+    def _check_win(self, agent):
+        """
+        Helper method to check if the current agent has won.
+        """
+        value = 0 if agent == "X" else 1
+
+        # Check rows and columns
+        for i in range(3):
+            if np.all(self.grid[i, :] == value) or np.all(self.grid[:, i] == value):
+                return True
+
+        # Check diagonals
+        if np.all(np.diag(self.grid) == value) or np.all(
+            np.diag(np.fliplr(self.grid)) == value
+        ):
+            return True
+
+        return False
+
+
+env = env(render_mode="human")
+env.reset()
+
+for _ in range(9):  # Maximum of 9 moves in Tic-Tac-Toe
+    agent = env.agent_selection
+    action = env.action_space(agent).sample()  # Random action
+    env.step(action)
+    if any(env.terminations.values()):
+        print(f"Game over! Rewards: {env.rewards}")
+        break
