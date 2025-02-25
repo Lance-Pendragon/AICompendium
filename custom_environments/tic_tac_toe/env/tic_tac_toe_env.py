@@ -199,19 +199,20 @@ class raw_env(AECEnv):
 
         return False
 
-        
-env = env(render_mode="human")
-env.reset()
 
-for _ in range(9):  # Maximum of 9 moves in Tic-Tac-Toe
-    agent = env.agent_selection
-    observation = env.observe(agent)
-    valid_actions = np.where(observation["action_mask"] == 1)[0]
-    if len(valid_actions) == 0:
-        print("No valid actions left!")
-        break
-    action = np.random.choice(valid_actions)  # Choose a random valid action
-    env.step(action)
-    if any(env.terminations.values()):
-        print(f"Game over! Rewards: {env.rewards}")
-        break
+if __name__ == "__main__":  
+    env = env(render_mode="human")
+    env.reset()
+
+    for _ in range(9):  # Maximum of 9 moves in Tic-Tac-Toe
+        agent = env.agent_selection
+        observation = env.observe(agent)
+        valid_actions = np.where(observation["action_mask"] == 1)[0]
+        if len(valid_actions) == 0:
+            print("No valid actions left!")
+            break
+        action = np.random.choice(valid_actions)  # Choose a random valid action
+        env.step(action)
+        if any(env.terminations.values()):
+            print(f"Game over! Rewards: {env.rewards}")
+            break
