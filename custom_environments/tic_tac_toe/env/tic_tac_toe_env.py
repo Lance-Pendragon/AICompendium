@@ -1,6 +1,6 @@
 import functools
 import numpy as np
-from gymnasium.spaces import Discrete, Box
+from gymnasium.spaces import Discrete, Box, Dict
 from pettingzoo import AECEnv
 from pettingzoo.utils import agent_selector, wrappers
 
@@ -59,7 +59,12 @@ class raw_env(AECEnv):
     @functools.lru_cache(maxsize=None)
     def observation_space(self, agent):
         # gymnasium spaces are defined and documented here: https://gymnasium.farama.org/api/spaces/
-        return Box(low=-1, high=1, shape=(3, 3), dtype=np.int8)
+        return Dict(
+            {
+                "observation": Box(low=-1, high=1, shape=(3, 3), dtype=np.int8),
+                "action_mask": Box(low=0, high=1, shape=(9,), dtype=np.int8),
+            }
+        )
 
     # Action space should be defined here.
     # If your spaces change over time, remove this line (disable caching).
@@ -90,7 +95,14 @@ class raw_env(AECEnv):
         should return a sane observation (though not necessarily the most up to date possible)
         at any time after reset() is called.
         """
-        return np.array(self.grid, dtype=np.int8)
+        # Create the action mask
+        action_mask = np.zeros(9, dtype=np.int8)
+        for i in range(9):
+            row, col = divmod(i, 3)
+            if self.grid[row, col] == -1:  # Cell is empty
+                action_mask[i] = 1
+
+        return {"observation": np.array(self.grid, dtype=np.int8), "action_mask": action_mask}
 
     def close(self):
         """
@@ -140,12 +152,13 @@ class raw_env(AECEnv):
         agent = self.agent_selection
         opponent = self._agent_selector.next()
 
-        # Check if the action is valid
-        row, col = divmod(action, 3)
-        if self.grid[row, col] != -1:
-            raise ValueError("This spot is already filled!")
+        # Check if the action is valid using the action mask
+        observation = self.observe(agent)
+        if observation["action_mask"][action] == 0:
+            raise ValueError(f"Invalid action {action}: cell already occupied")
 
         # Update the grid
+        row, col = divmod(action, 3)
         self.grid[row, col] = 0 if agent == "X" else 1
 
         # Check for a win
@@ -181,20 +194,23 @@ class raw_env(AECEnv):
                 return True
 
         # Check diagonals
-        if np.all(np.diag(self.grid) == value) or np.all(
-            np.diag(np.fliplr(self.grid)) == value
-        ):
+        if np.all(np.diag(self.grid) == value) or np.all(np.diag(np.fliplr(self.grid)) == value):
             return True
 
         return False
 
-
+        
 env = env(render_mode="human")
 env.reset()
 
 for _ in range(9):  # Maximum of 9 moves in Tic-Tac-Toe
     agent = env.agent_selection
-    action = env.action_space(agent).sample()  # Random action
+    observation = env.observe(agent)
+    valid_actions = np.where(observation["action_mask"] == 1)[0]
+    if len(valid_actions) == 0:
+        print("No valid actions left!")
+        break
+    action = np.random.choice(valid_actions)  # Choose a random valid action
     env.step(action)
     if any(env.terminations.values()):
         print(f"Game over! Rewards: {env.rewards}")
